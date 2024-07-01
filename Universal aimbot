@@ -5,12 +5,13 @@ local AimSettings = {
     AimEnabled = false,
     TracersEnabled = false,
     ESPEnabled = false,
-    FastBulletsEnabled = false
+    FastBulletsEnabled = false,
+    TargetPart = "Head"
 }
 
 -- Functions
 local function IsValidTarget(player)
-    return player and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0
+    return player and player.Character and player.Character:FindFirstChild(AimSettings.TargetPart) and player.Character:FindFirstChildOfClass("Humanoid").Health > 0
 end
 
 local function IsVisible(target)
@@ -18,7 +19,7 @@ local function IsVisible(target)
     if not localPlayer.Character or not localPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
 
     local origin = localPlayer.Character.HumanoidRootPart.Position
-    local targetPosition = target.Character.Head.Position
+    local targetPosition = target.Character[AimSettings.TargetPart].Position
     local ray = Ray.new(origin, (targetPosition - origin).unit * 1000)
     local part = workspace:FindPartOnRayWithIgnoreList(ray, {localPlayer.Character})
 
@@ -38,7 +39,7 @@ local function GetClosestPlayer()
                 continue
             end
 
-            local distance = (player.Character.Head.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
+            local distance = (player.Character[AimSettings.TargetPart].Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
             if distance < shortestDistance then
                 closestPlayer = player
                 shortestDistance = distance
@@ -53,9 +54,9 @@ local function AimAt(target)
     if not IsValidTarget(target) then return end
 
     local camera = game:GetService("Workspace").CurrentCamera
-    local headPosition = target.Character.Head.Position
+    local targetPosition = target.Character[AimSettings.TargetPart].Position
 
-    local direction = (headPosition - camera.CFrame.Position).unit
+    local direction = (targetPosition - camera.CFrame.Position).unit
     local targetCFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + direction)
 
     camera.CFrame = targetCFrame
@@ -83,12 +84,12 @@ local function DrawESP(target)
 
     local camera = game:GetService("Workspace").CurrentCamera
     local character = target.Character
-    local headPosition = camera:WorldToViewportPoint(character.Head.Position)
+    local targetPosition = camera:WorldToViewportPoint(character[AimSettings.TargetPart].Position)
     local rootPosition = camera:WorldToViewportPoint(character.HumanoidRootPart.Position)
     local legPosition = camera:WorldToViewportPoint(character.HumanoidRootPart.Position - Vector3.new(0, 3, 0))
 
-    box.Size = Vector2.new(1000 / rootPosition.Z, (legPosition.Y - headPosition.Y) / 2)
-    box.Position = Vector2.new(headPosition.X - box.Size.X / 2, headPosition.Y - box.Size.Y / 2)
+    box.Size = Vector2.new(1000 / rootPosition.Z, (legPosition.Y - targetPosition.Y) / 2)
+    box.Position = Vector2.new(targetPosition.X - box.Size.X / 2, targetPosition.Y - box.Size.Y / 2)
 
     return box
 end
@@ -179,6 +180,15 @@ AimbotTab:AddToggle({
     end
 })
 
+AimbotTab:AddDropdown({
+    Name = "Target Part",
+    Default = "Head",
+    Options = {"Head", "HumanoidRootPart"},
+    Callback = function(Value)
+        AimSettings.TargetPart = Value
+    end
+})
+
 AimbotTab:AddToggle({
     Name = "Enable Fast Bullets",
     Default = false,
@@ -205,7 +215,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
             for _, enemy in ipairs(enemies) do
                 if IsValidTarget(enemy) and IsVisible(enemy) then
                     local fromPosition = game:GetService("Workspace").CurrentCamera:WorldToViewportPoint(localPlayer.Character.HumanoidRootPart.Position)
-                    local toPosition = game:GetService("Workspace").CurrentCamera:WorldToViewportPoint(enemy.Character.Head.Position)
+                    local toPosition = game:GetService("Workspace").CurrentCamera:WorldToViewportPoint(enemy.Character[AimSettings.TargetPart].Position)
                     table.insert(activeTracers, DrawTracer(fromPosition, toPosition))
                 end
             end
